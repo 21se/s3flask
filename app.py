@@ -3,7 +3,6 @@ from flask import Flask, Response, request, render_template
 import requests
 import xmltodict
 
-
 app = Flask(__name__)
 redis = redis_client.Redis('localhost', 6379, 0)
 
@@ -18,12 +17,8 @@ def route(path):
     return proxy()
 
 
-# @app.route('/copy', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
-# def route_copy():
-
-
-@app.route('/find_ksu', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
-def route_find():
+@app.route('/find_guid/<path:guid>', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
+def route_find_guid(guid):  # TODO: вернуть ListBucketResult?
     return render_template('find.html')
 
 
@@ -57,11 +52,15 @@ def proxy():
             print(error)
 
     if out.status_code == 200:
-        if request.method == 'PUT':
-            guid = request.headers.environ.get('HTTP_X_AMZ_META_GUID1C')
-            if guid:
-                if redis.set(request.path + ':guid1c:' + guid, '1'):
-                    redis.save()
+        if request.method == 'PUT':  # TODO: внутри сервера/на сервер?
+            save = False
+            for key, value in request.headers.environ.items():
+                if key.startswith('HTTP_X_AMZ_META_') and key != 'HTTP_X_AMZ_META_MC_ATTRS':
+                    key = key.replace('HTTP_X_AMZ_META_', '')
+                    if redis.set(request.path + ':' + key + ':' + value, '1'):
+                        save = True
+            if save:
+                redis.save()
 
     return out
 
