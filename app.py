@@ -1,10 +1,15 @@
-import redis as redis_client
+from redis import Redis
+from minio import Minio
 from flask import Flask, Response, request, render_template
-import requests
 import xmltodict
+import requests
 
 app = Flask(__name__)
-redis = redis_client.Redis('localhost', 6379, 0)
+redis = Redis('localhost', 6379, 0)
+minio = Minio('localhost:5000',
+              access_key='minioadmin',
+              secret_key='minioadmin',
+              secure=False)
 
 
 @app.route('/', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
@@ -17,13 +22,52 @@ def route(path):
     return proxy()
 
 
-@app.route('/find_guid/<path:guid>', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
-def route_find_guid(guid):  # TODO: вернуть ListBucketResult?
-    return render_template('find.html')
+@app.route('/init', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
+def route_init():
+
+    redis.flushdb()
+
+    for obj in minio.list_objects_v2('adminbucket', recursive=True):  # TODO: привязка к adminbucket?
+        if obj.is_dir:
+            continue
+
+        for key, value in minio.stat_object('adminbucket', obj.object_name).metadata.items():
+            if 'x-amz-meta-' in key and key != 'x-amz-meta-mc-attrs':
+                key = key.replace('x-amz-meta-', '')
+                redis.set('adminbucket/' + obj.object_name + ":" + key + ":" + value, '1')
+
+    redis.save()
+
+    return 'DB size: ' + str(redis.dbsize())
 
 
 def proxy():
-    r = requests.request(request.method, 'http://localhost:9000' + request.path,
+
+    # поиск по метаданным
+    if "list-type" in request.args and ":" in request.args["prefix"]:
+        files = []
+
+        for key in redis.keys("*" + request.args["prefix"] + "*"):
+            name = key.decode()[:key.decode().find(":")]
+            files.append(name)
+
+        return render_template('find.html', files=files)
+
+    # удаление метаданных из redis при удалении файла
+    # TODO: обработка удаления со страницы minio через webrpc?
+    # TODO: из minio client доступно удаление только пустой папки
+    # if request.headers.environ.get('QUERY_STRING') == 'delete=':
+    #     if request.data:
+    #         data = xmltodict.parse(request.data)
+    #         name = data.get('Delete').get('Object').get('Key')
+    #         if name:
+
+    path = request.path
+
+    if ':' in path:
+        path = path[:path.find(':')]
+
+    r = requests.request(request.method, 'http://localhost:9000' + path,
                          params=request.args, stream=True, headers=request.headers,
                          allow_redirects=False, data=request.data)
 
@@ -36,29 +80,19 @@ def proxy():
     out = Response(generate(), headers=headers)
     out.status_code = r.status_code
 
-    if out.data:
-        try:
-            new_items = []
-            datadict = xmltodict.parse(out.data)
-            list_bucket_result = datadict.get('ListBucketResult')
-            if list_bucket_result:
-                contents = list_bucket_result.get('Contents', {})
-                for content in contents:
-                    new_items.append(content)
-                for item in new_items:
-                    contents.append(item)
-                out.data = xmltodict.unparse(datadict)
-        except Exception as error:
-            print(error)
-
+    # добавление метаданных в redis при добавлении файла
     if out.status_code == 200:
-        if request.method == 'PUT':  # TODO: внутри сервера/на сервер?
+        if request.method == 'PUT':
             save = False
+
             for key, value in request.headers.environ.items():
                 if key.startswith('HTTP_X_AMZ_META_') and key != 'HTTP_X_AMZ_META_MC_ATTRS':
-                    key = key.replace('HTTP_X_AMZ_META_', '')
+                    key = key.replace('HTTP_X_AMZ_META_', '').lower()
+                    if request.path.startswith('/'):
+                        request.path = request.path[1:]
                     if redis.set(request.path + ':' + key + ':' + value, '1'):
                         save = True
+
             if save:
                 redis.save()
 
