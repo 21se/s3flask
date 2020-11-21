@@ -55,12 +55,28 @@ def proxy():
 
     # удаление метаданных из redis при удалении файла
     # TODO: обработка удаления со страницы minio через webrpc?
-    # TODO: из minio client доступно удаление только пустой папки
-    # if request.headers.environ.get('QUERY_STRING') == 'delete=':
-    #     if request.data:
-    #         data = xmltodict.parse(request.data)
-    #         name = data.get('Delete').get('Object').get('Key')
-    #         if name:
+    if request.query_string.decode() == 'delete=':
+        if request.data:
+            deleted = False
+            data = xmltodict.parse(request.data)
+            objects = data.get('Delete', {}).get('Object', {})
+
+            rpath = request.path
+            if rpath.startswith('/'):
+                rpath = rpath[1:]
+
+            for obj in objects:
+                if type(obj) != str:
+                    path = rpath + obj.get('Key', '')
+                else:
+                    path = rpath + objects.get('Key', '')
+
+                for key in redis.keys(path + ":*"):
+                    if redis.delete(key):
+                        deleted = True
+
+            if deleted:
+                redis.save()
 
     path = request.path
 
