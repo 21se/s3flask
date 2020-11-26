@@ -6,7 +6,7 @@ import requests
 
 app = Flask(__name__)
 redis = Redis('localhost', 6379, 0)
-minio = Minio('localhost:5000',
+minio = Minio('localhost:9000',
               access_key='minioadmin',
               secret_key='minioadmin',
               secure=False)
@@ -27,14 +27,15 @@ def route_init():
 
     redis.flushdb()
 
-    for obj in minio.list_objects_v2('adminbucket', recursive=True):  # TODO: привязка к adminbucket?
-        if obj.is_dir:
-            continue
+    for bucket in minio.list_buckets():
+        for obj in minio.list_objects_v2(bucket.name, recursive=True):
+            if obj.is_dir:
+                continue
 
-        for key, value in minio.stat_object('adminbucket', obj.object_name).metadata.items():
-            if 'x-amz-meta-' in key and key != 'x-amz-meta-mc-attrs':
-                key = key.replace('x-amz-meta-', '')
-                redis.set('adminbucket/' + obj.object_name + ":" + key + ":" + value, '1')
+            for key, value in minio.stat_object(bucket.name, obj.object_name).metadata.items():
+                if 'x-amz-meta-' in key and key != 'x-amz-meta-mc-attrs':
+                    key = key.replace('x-amz-meta-', '')
+                    redis.set(bucket.name + '/' + obj.object_name + ":" + key + ":" + value, '1')
 
     redis.save()
 
@@ -54,7 +55,6 @@ def proxy():
         return render_template('find.html', files=files)
 
     # удаление метаданных из redis при удалении файла
-    # TODO: обработка удаления со страницы minio через webrpc?
     if request.query_string.decode() == 'delete=':
         if request.data:
             deleted = False
@@ -99,18 +99,19 @@ def proxy():
     # добавление метаданных в redis при добавлении файла
     if out.status_code == 200:
         if request.method == 'PUT':
-            save = False
-
             for key, value in request.headers.environ.items():
                 if key.startswith('HTTP_X_AMZ_META_') and key != 'HTTP_X_AMZ_META_MC_ATTRS':
                     key = key.replace('HTTP_X_AMZ_META_', '').lower()
-                    if request.path.startswith('/'):
-                        request.path = request.path[1:]
-                    if redis.set(request.path + ':' + key + ':' + value, '1'):
-                        save = True
+                    path = request.path
+                    if path.startswith('/'):
+                        path = path[1:]
 
-            if save:
-                redis.save()
+                    for rkey in redis.keys(path + ":" + key + ":*"):
+                        redis.delete(rkey)
+
+                    redis.set(path + ':' + key + ':' + value, '1')
+
+            redis.save()
 
     return out
 
