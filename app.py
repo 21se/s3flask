@@ -3,14 +3,44 @@ from minio import Minio
 from flask import Flask, Response, request, render_template
 import xmltodict
 import requests
+import os
+import configparser
 
-app = Flask(__name__)
-redis = Redis('localhost', 6379, 0)
-minio = Minio('localhost:9000',
-              access_key='minioadmin',
-              secret_key='minioadmin',
-              secure=False)
 
+def create_config(path):
+    config = configparser.ConfigParser()
+
+    config.add_section('Settings')
+    config.set('Settings', 'dir', '/root/ksu_s3plus/')
+    config.add_section('Redis')
+    config.set('Redis', 'ip', 'localhost')
+    config.set('Redis', 'port', '6379')
+    config.add_section('Minio')
+    config.set('Minio', 'ip', 'localhost')
+    config.set('Minio', 'port', '9000')
+    config.set('Minio', 'access_key', 'minioadmin')
+    config.set('Minio', 'secret_key', 'minioadmin')
+    config.add_section('Flask')
+    config.set('Flask', 'ip', '0.0.0.0')
+    config.set('Flask', 'port', '5000')
+
+    with open(path, 'w') as config_file:
+        config.write(config_file)
+
+
+def get_config(path):
+    if not os.path.exists(path):
+        create_config(path)
+
+    config = configparser.ConfigParser()
+    config.read(path)
+
+    return config
+
+
+config = get_config('config.ini')
+app = Flask(__name__, template_folder='templates')
+redis = Redis(config['Redis']['ip'], config['Redis']['port'], 0)
 
 @app.route('/', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
 def route_home():
@@ -25,6 +55,11 @@ def route(path):
 @app.route('/init', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
 def route_init():
 
+    minio = Minio(config['Minio']['ip'] + ':' + config['Minio']['port'],
+                  access_key=config['Minio']['access_key'],
+                  secret_key=config['Minio']['secret_key'],
+                  secure=False)
+
     redis.flushdb()
 
     for bucket in minio.list_buckets():
@@ -35,7 +70,7 @@ def route_init():
             for key, value in minio.stat_object(bucket.name, obj.object_name).metadata.items():
                 if 'x-amz-meta-' in key and key != 'x-amz-meta-mc-attrs':
                     key = key.replace('x-amz-meta-', '')
-                    redis.set(bucket.name + '/' + obj.object_name + ":" + key + ":" + value, '1')
+                    redis.set(bucket.name + '/' + obj.object_name + ':' + key + ':' + value, '1')
 
     redis.save()
 
@@ -45,11 +80,11 @@ def route_init():
 def proxy():
 
     # поиск по метаданным
-    if "list-type" in request.args and ":" in request.args["prefix"]:
+    if 'list-type' in request.args and ':' in request.args['prefix']:
         files = []
 
-        for key in redis.keys("*" + request.args["prefix"] + "*"):
-            name = key.decode()[:key.decode().find(":")]
+        for key in redis.keys('*' + request.args['prefix'] + '*'):
+            name = key.decode()[:key.decode().find(':')]
             files.append(name)
 
         return render_template('find.html', files=files)
@@ -71,7 +106,7 @@ def proxy():
                 else:
                     path = rpath + objects.get('Key', '')
 
-                for key in redis.keys(path + ":*"):
+                for key in redis.keys(path + ':*'):
                     if redis.delete(key):
                         deleted = True
 
@@ -83,7 +118,7 @@ def proxy():
     if ':' in path:
         path = path[:path.find(':')]
 
-    r = requests.request(request.method, 'http://localhost:9000' + path,
+    r = requests.request(request.method, 'http://' + config['Minio']['ip'] + ':' + config['Minio']['port'] + path,
                          params=request.args, stream=True, headers=request.headers,
                          allow_redirects=False, data=request.data)
 
@@ -106,7 +141,7 @@ def proxy():
                     if path.startswith('/'):
                         path = path[1:]
 
-                    for rkey in redis.keys(path + ":" + key + ":*"):
+                    for rkey in redis.keys(path + ':' + key + ':*'):
                         redis.delete(rkey)
 
                     redis.set(path + ':' + key + ':' + value, '1')
@@ -117,4 +152,4 @@ def proxy():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host=config['Flask']['ip'], port=config['Flask']['port'])
