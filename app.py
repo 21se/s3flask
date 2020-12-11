@@ -1,139 +1,165 @@
+import requests
 from redis import Redis
 from minio import Minio
 from flask import Flask, Response, request, render_template
-import xmltodict
-import requests
-import os
-import configparser
+from timeit import default_timer as timer
+from datetime import timedelta
+from xmltodict import parse
+from os.path import exists
+from configparser import ConfigParser
 
 
 def create_config(path):
-    config = configparser.ConfigParser()
+    cfg = ConfigParser()
 
-    config.add_section('Settings')
-    config.set('Settings', 'dir', '/root/ksu_s3plus/')
-    config.add_section('Redis')
-    config.set('Redis', 'ip', 'localhost')
-    config.set('Redis', 'port', '6379')
-    config.add_section('Minio')
-    config.set('Minio', 'ip', 'localhost')
-    config.set('Minio', 'port', '9000')
-    config.set('Minio', 'access_key', 'minioadmin')
-    config.set('Minio', 'secret_key', 'minioadmin')
-    config.add_section('Flask')
-    config.set('Flask', 'ip', '0.0.0.0')
-    config.set('Flask', 'port', '5000')
+    cfg.add_section('Redis')
+    cfg.set('Redis', 'ip', 'localhost')
+    cfg.set('Redis', 'port', '6379')
+    cfg.add_section('Minio')
+    cfg.set('Minio', 'ip', 'localhost')
+    cfg.set('Minio', 'port', '9000')
+    cfg.set('Minio', 'access_key', 'minioadmin')
+    cfg.set('Minio', 'secret_key', 'minioadmin')
+    cfg.add_section('Flask')
+    cfg.set('Flask', 'ip', '0.0.0.0')
+    cfg.set('Flask', 'port', '5000')
 
     with open(path, 'w') as config_file:
-        config.write(config_file)
+        cfg.write(config_file)
 
 
 def get_config(path):
-    if not os.path.exists(path):
+    if not exists(path):
         create_config(path)
 
-    config = configparser.ConfigParser()
-    config.read(path)
+    cfg = ConfigParser()
+    cfg.read(path)
 
-    return config
+    return cfg
 
 
 config = get_config('config.ini')
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__, template_folder = 'templates')
 redis = Redis(config['Redis']['ip'], config['Redis']['port'], 0)
 
-@app.route('/', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
+
+@app.route('/', methods = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
 def route_home():
     return proxy()
 
 
-@app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
+@app.route('/<path:path>', methods = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
 def route(path):
     return proxy()
 
 
-@app.route('/init', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
+@app.route('/init', methods = ['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
 def route_init():
-
     minio = Minio(config['Minio']['ip'] + ':' + config['Minio']['port'],
-                  access_key=config['Minio']['access_key'],
-                  secret_key=config['Minio']['secret_key'],
-                  secure=False)
+                  access_key = config['Minio']['access_key'],
+                  secret_key = config['Minio']['secret_key'],
+                  secure = False)
 
-    redis.flushdb()
+    # аутентификация minIO
+    try:
+        buckets = minio.list_buckets()
+    except Exception as exp:
+        return str.format('MinIO: {}', exp), 403
 
-    for bucket in minio.list_buckets():
-        for obj in minio.list_objects_v2(bucket.name, recursive=True):
+    try:
+        redis.flushdb()
+    except Exception as exp:
+        return str.format('Redis: {}', exp), 403
+
+    start = timer()
+
+    for bucket in buckets:
+        for obj in minio.list_objects_v2(bucket.name, recursive = True):
             if obj.is_dir:
                 continue
 
             for key, value in minio.stat_object(bucket.name, obj.object_name).metadata.items():
-                if 'x-amz-meta-' in key and key != 'x-amz-meta-mc-attrs':
+                if 'x-amz-meta-' in key:
+                    if key == 'x-amz-meta-mc-attrs':
+                        continue
                     key = key.replace('x-amz-meta-', '')
                     redis.set(bucket.name + '/' + obj.object_name + ':' + key + ':' + value, '1')
 
     redis.save()
 
-    return 'DB size: ' + str(redis.dbsize())
+    end = timer()
+
+    return str.format('Количество значений мета-тегов: {}. Времени прошло: {}.',
+                      redis.dbsize(), timedelta(seconds = end - start))
 
 
 def proxy():
+    # перехват запроса для поиска по метаданным
 
-    # поиск по метаданным
     if 'list-type' in request.args and ':' in request.args['prefix']:
+        # аутентификация запроса
+
+        bucket_name = request.path[1:]
+
+        r = requests.request(request.method,
+                             'http://' + config['Minio']['ip'] + ':' + config['Minio']['port'] + request.path,
+                             params = request.args, stream = True, headers = request.headers,
+                             allow_redirects = False, data = request.data)
+        if r.status_code != 200:
+            return r.text, r.status_code
+
+        try:
+            redis.ping()
+        except Exception as exp:
+            return render_template('error.html', text = str.format('Redis: {}', exp), bucket_name = bucket_name,
+                                   request_path = request.path), 403
+
         files = []
 
-        for key in redis.keys('*' + request.args['prefix'] + '*'):
-            name = key.decode()[:key.decode().find(':')]
-            files.append(name)
+        postfix = request.args['prefix'][request.args['prefix'].find(':'):]
+        prefix = request.args['prefix'][:request.args['prefix'].find(':')]
 
-        return render_template('find.html', files=files)
+        for key in redis.keys('*' + postfix + '*'):
+            key = key.decode()
+            name = key[:key.find(':')]
 
-    # удаление метаданных из redis при удалении файла
-    if request.query_string.decode() == 'delete=':
-        if request.data:
-            deleted = False
-            data = xmltodict.parse(request.data)
-            objects = data.get('Delete', {}).get('Object', {})
+            # возврат файлов из указанного каталога
+            if name.startswith(bucket_name + prefix):
+                name = name.replace(bucket_name, '')
+                files.append(name)
 
-            rpath = request.path
-            if rpath.startswith('/'):
-                rpath = rpath[1:]
-
-            for obj in objects:
-                if type(obj) != str:
-                    path = rpath + obj.get('Key', '')
-                else:
-                    path = rpath + objects.get('Key', '')
-
-                for key in redis.keys(path + ':*'):
-                    if redis.delete(key):
-                        deleted = True
-
-            if deleted:
-                redis.save()
+        return render_template('find.html', files = files, bucket_name = bucket_name,
+                               delimiter = request.args['delimiter'])
 
     path = request.path
-
     if ':' in path:
         path = path[:path.find(':')]
 
+    # проксирование запроса к серверу MinIO
     r = requests.request(request.method, 'http://' + config['Minio']['ip'] + ':' + config['Minio']['port'] + path,
-                         params=request.args, stream=True, headers=request.headers,
-                         allow_redirects=False, data=request.data)
+                         params = request.args, stream = True, headers = request.headers,
+                         allow_redirects = False, data = request.data)
 
     headers = dict(r.raw.headers)
 
     def generate():
-        for chunk in r.raw.stream(decode_content=False):
+        for chunk in r.raw.stream(decode_content = False):
             yield chunk
 
-    out = Response(generate(), headers=headers)
+    out = Response(generate(), headers = headers)
     out.status_code = r.status_code
 
-    # добавление метаданных в redis при добавлении файла
     if out.status_code == 200:
         if request.method == 'PUT':
+            # TODO: отмена записи/удаления при недоступности Redis?
+            # проверка доступности хранилища Redis
+            try:
+                redis.ping()
+            except Exception as exp:
+                return render_template('error.html', text = str.format('Redis: {}', exp),
+                                       bucket_name = request.path.replace('/', ''), request_path = request.path), 403
+
+            # добавление метаданных в Redis при добавлении файла
             for key, value in request.headers.environ.items():
                 if key.startswith('HTTP_X_AMZ_META_') and key != 'HTTP_X_AMZ_META_MC_ATTRS':
                     key = key.replace('HTTP_X_AMZ_META_', '').lower()
@@ -148,8 +174,39 @@ def proxy():
 
             redis.save()
 
+        elif request.query_string.decode() == 'delete=':
+            # проверка доступности хранилища Redis
+            try:
+                redis.ping()
+            except Exception as exp:
+                return render_template('error.html', text = str.format('Redis: {}', exp),
+                                       bucket_name = request.path.replace('/', ''), request_path = request.path), 403
+
+            if request.data:
+                # удаление метаданных в Redis при удалении файла
+                deleted = False
+                data = parse(request.data)
+                objects = data.get('Delete', {}).get('Object', {})
+
+                rpath = request.path
+                if rpath.startswith('/'):
+                    rpath = rpath[1:]
+
+                for obj in objects:
+                    if type(obj) != str:
+                        path = rpath + obj.get('Key', '')
+                    else:
+                        path = rpath + objects.get('Key', '')
+
+                    for key in redis.keys(path + ':*'):
+                        if redis.delete(key):
+                            deleted = True
+
+                if deleted:
+                    redis.save()
+
     return out
 
 
 if __name__ == '__main__':
-    app.run(host=config['Flask']['ip'], port=config['Flask']['port'])
+    app.run(host = config['Flask']['ip'], port = config['Flask']['port'])
