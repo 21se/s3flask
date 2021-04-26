@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# flake8: noqa
-
 """Configuration file parser.
 
 A configuration file consists of sections, lead by a "[section]" header,
@@ -142,15 +138,6 @@ ConfigParser -- responsible for parsing a list of
         between keys and values are surrounded by spaces.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-try:
-    from collections.abc import MutableMapping
-except ImportError:
-    from collections import MutableMapping
 import functools
 import io
 import itertools
@@ -158,12 +145,9 @@ import os
 import re
 import sys
 import warnings
-
-from backports.configparser.helpers import OrderedDict as _default_dict
-from backports.configparser.helpers import ChainMap as _ChainMap
-from backports.configparser.helpers import from_none, open, str, PY2
-from backports.configparser.helpers import PathLike, fspath
-from backports.configparser.helpers import MutableMapping
+from collections import OrderedDict as _default_dict
+from collections import ChainMap as _ChainMap
+from collections.abc import MutableMapping
 
 __all__ = [
     "NoSectionError",
@@ -440,7 +424,9 @@ class BasicInterpolation(Interpolation):
             )
         return value
 
-    def _interpolate_some(self, parser, option, accum, rest, section, map, depth):
+    def _interpolate_some(  # noqa: C901
+        self, parser, option, accum, rest, section, map, depth
+    ):
         rawval = parser.get(section, option, raw=True, fallback=rest)
         if depth > MAX_INTERPOLATION_DEPTH:
             raise InterpolationDepthError(option, section, rawval)
@@ -470,9 +456,9 @@ class BasicInterpolation(Interpolation):
                 try:
                     v = map[var]
                 except KeyError:
-                    raise from_none(
-                        InterpolationMissingOptionError(option, section, rawval, var)
-                    )
+                    raise InterpolationMissingOptionError(
+                        option, section, rawval, var
+                    ) from None
                 if "%" in v:
                     self._interpolate_some(
                         parser, option, accum, v, section, map, depth + 1
@@ -508,7 +494,9 @@ class ExtendedInterpolation(Interpolation):
             )
         return value
 
-    def _interpolate_some(self, parser, option, accum, rest, section, map, depth):
+    def _interpolate_some(  # noqa: C901
+        self, parser, option, accum, rest, section, map, depth
+    ):
         rawval = parser.get(section, option, raw=True, fallback=rest)
         if depth > MAX_INTERPOLATION_DEPTH:
             raise InterpolationDepthError(option, section, rawval)
@@ -550,11 +538,9 @@ class ExtendedInterpolation(Interpolation):
                             option, section, "More than one ':' found: %r" % (rest,)
                         )
                 except (KeyError, NoSectionError, NoOptionError):
-                    raise from_none(
-                        InterpolationMissingOptionError(
-                            option, section, rawval, ":".join(path)
-                        )
-                    )
+                    raise InterpolationMissingOptionError(
+                        option, section, rawval, ":".join(path)
+                    ) from None
                 if "$" in v:
                     self._interpolate_some(
                         parser,
@@ -592,11 +578,9 @@ class LegacyInterpolation(Interpolation):
                 try:
                     value = value % vars
                 except KeyError as e:
-                    raise from_none(
-                        InterpolationMissingOptionError(
-                            option, section, rawval, e.args[0]
-                        )
-                    )
+                    raise InterpolationMissingOptionError(
+                        option, section, rawval, e.args[0]
+                    ) from None
             else:
                 break
         if value and "%(" in value:
@@ -743,7 +727,7 @@ class RawConfigParser(MutableMapping):
         try:
             opts = self._sections[section].copy()
         except KeyError:
-            raise from_none(NoSectionError(section))
+            raise NoSectionError(section) from None
         opts.update(self._defaults)
         return list(opts.keys())
 
@@ -759,12 +743,12 @@ class RawConfigParser(MutableMapping):
 
         Return list of successfully read files.
         """
-        if isinstance(filenames, (str, bytes, PathLike)):
+        if isinstance(filenames, (str, bytes, os.PathLike)):
             filenames = [filenames]
         read_ok = []
         for filename in filenames:
-            if isinstance(filename, PathLike):
-                filename = fspath(filename)
+            if isinstance(filename, os.PathLike):
+                filename = os.fspath(filename)
             try:
                 with open(filename, encoding=encoding) as fp:
                     self._read(fp, filename)
@@ -936,11 +920,15 @@ class RawConfigParser(MutableMapping):
         if vars:
             for key, value in vars.items():
                 d[self.optionxform(key)] = value
-        value_getter = lambda option: self._interpolation.before_get(
-            self, section, option, d[option], d
-        )
-        if raw:
-            value_getter = lambda option: d[option]
+
+        def value_getter_interp(option):
+            return self._interpolation.before_get(self, section, option, d[option], d)
+
+        def value_getter_raw(option):
+            return d[option]
+
+        value_getter = value_getter_raw if raw else value_getter_interp
+
         return [(option, value_getter(option)) for option in orig_keys]
 
     def popitem(self):
@@ -982,7 +970,7 @@ class RawConfigParser(MutableMapping):
             try:
                 sectdict = self._sections[section]
             except KeyError:
-                raise from_none(NoSectionError(section))
+                raise NoSectionError(section) from None
         sectdict[self.optionxform(option)] = value
 
     def write(self, fp, space_around_delimiters=True):
@@ -1020,7 +1008,7 @@ class RawConfigParser(MutableMapping):
             try:
                 sectdict = self._sections[section]
             except KeyError:
-                raise from_none(NoSectionError(section))
+                raise NoSectionError(section) from None
         option = self.optionxform(option)
         existed = option in sectdict
         if existed:
@@ -1070,7 +1058,7 @@ class RawConfigParser(MutableMapping):
         # XXX does it break when underlying container state changed?
         return itertools.chain((self.default_section,), self._sections.keys())
 
-    def _read(self, fp, fpname):
+    def _read(self, fp, fpname):  # noqa: C901
         """Parse a sectioned configuration file.
 
         Each section in a configuration file contains a header, indicated by
@@ -1258,24 +1246,6 @@ class RawConfigParser(MutableMapping):
         section = kwargs.get('section', "")
         option = kwargs.get('option', "")
         value = kwargs.get('value', "")
-
-        if PY2 and bytes in (type(section), type(option), type(value)):
-            # we allow for a little unholy magic for Python 2 so that
-            # people not using unicode_literals can still use the library
-            # conveniently
-            warnings.warn(
-                "You passed a bytestring. Implicitly decoding as UTF-8 string."
-                " This will not work on Python 3. Please switch to using"
-                " Unicode strings across the board.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            if isinstance(section, bytes):
-                section = section.decode('utf8')
-            if isinstance(option, bytes):
-                option = option.decode('utf8')
-            if isinstance(value, bytes):
-                value = value.decode('utf8')
 
         if not isinstance(section, str):
             raise TypeError("section names must be strings")
