@@ -1,4 +1,4 @@
-requests==2.25.1
+requests==2.24.0
 redis==3.5.3
 minio==7.0.3
 flask==1.1.2
