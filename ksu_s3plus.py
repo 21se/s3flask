@@ -3,9 +3,10 @@ import os
 
 import requests
 from flask import Flask, Response, request, render_template
+from xmltodict import parse
+
 from minio import Minio
 from redis import Redis
-from xmltodict import parse
 
 # init
 config = {}
