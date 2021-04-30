@@ -1,8 +1,8 @@
-FROM python:alpine 
+FROM python:alpine
 RUN mkdir /app
 WORKDIR /app
-RUN pip install flask requests redis minio
-RUN apk add redis 
+RUN pip install -r requirements.txt
+RUN apk add redis
 EXPOSE 5000
 COPY . .
 RUN chmod +x /app/entrypoint.sh
