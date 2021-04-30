@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
-    <Name>{{ bucket_name }}</Name><Prefix></Prefix><KeyCount>{{ files.count }}</KeyCount><MaxKeys>1000</MaxKeys><Delimiter>{{ delimiter }}</Delimiter><IsTruncated>false</IsTruncated>
+    <Name>adminbucket</Name><Prefix></Prefix><KeyCount>{{ files.count }}</KeyCount><MaxKeys>1000</MaxKeys><Delimiter>/</Delimiter><IsTruncated>false</IsTruncated>
     {% for file in files %}
         <Contents>
         <Key>{{ file }}</Key><LastModified>0001-01-01T00:00:00.000Z</LastModified><ETag></ETag><Size>0</Size>

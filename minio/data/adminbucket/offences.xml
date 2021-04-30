@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<con:soapui-project id="b2729022-44d9-4883-9372-61b15b9d62de" activeEnvironment="Default" name="ExchangeVideoserverOffences" resourceRoot="" soapui-version="5.6.0" abortOnError="false" runType="SEQUENTIAL" xmlns:con="http://eviware.com/soapui/config"><con:settings/><con:interface xsi:type="con:WsdlInterface" id="3e43469f-eee2-4485-85d3-49da58b1b078" wsaVersion="NONE" name="ExchangeVideoserverOffencesSoap12Binding" type="wsdl" bindingName="{http://www.1c.exchange-videoserver-offences.serv.org}ExchangeVideoserverOffencesSoap12Binding" soapVersion="1_2" anonymous="optional" definition="https://db.1c-ksu.ru/VA_Prombez2/ws/ExchangeVideoserverOffences/ExchangeVideoserverOffences.1cws?wsdl" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:settings/><con:definitionCache/><con:endpoints><con:endpoint>https://db.1c-ksu.ru/VA_Prombez2/ws/ExchangeVideoserverOffences/ExchangeVideoserverOffences.1cws</con:endpoint></con:endpoints><con:operation id="ffb20320-285d-4c46-a41f-72a8e5457d3b" isOneWay="false" action="http://www.1c.exchange-videoserver-offences.serv.org#ExchangeVideoserverOffences:addVSoffence" name="addVSoffence" bindingOperationName="addVSoffence" type="Request-Response" inputName="" receivesAttachments="false" sendsAttachments="false" anonymous="optional"><con:settings/><con:call id="0d09a2c5-f533-4e83-a7e1-036bb18eedab" name="Request 1"><con:settings/><con:encoding>UTF-8</con:encoding><con:endpoint>https://db.1c-ksu.ru/VA_Prombez2/ws/ExchangeVideoserverOffences/ExchangeVideoserverOffences.1cws</con:endpoint><con:request><![CDATA[<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:c="http://www.1c.exchange-videoserver-offences.serv.org" xmlns:c1="http://www.1c.exchange-videoserver-offences.org">\r
+   <soap:Header/>\r
+   <soap:Body>\r
+      <c:addVSoffence>\r
+         <c:metadata>\r
+            <!--Optional:-->\r
+            <c1:idRequest>?</c1:idRequest>\r
+         </c:metadata>\r
+         <c:data>\r
+            <!--Optional:-->\r
+            <c1:idAccess>?</c1:idAccess>\r
+            <c1:idVideostream>?</c1:idVideostream>\r
+            <c1:idObjective>?</c1:idObjective>\r
+            <c1:idRegulation>?</c1:idRegulation>\r
+            <!--Optional:-->\r
+            <c1:idOrganization>?</c1:idOrganization>\r
+            <!--Optional:-->\r
+            <c1:idDepartment>?</c1:idDepartment>\r
+            <c1:dateOffense>?</c1:dateOffense>\r
+            <c1:image>?</c1:image>\r
+         </c:data>\r
+      </c:addVSoffence>\r
+   </soap:Body>\r
+</soap:Envelope>]]></con:request><con:wsaConfig mustUnderstand="NONE" version="200508" action="http://www.1c.exchange-videoserver-offences.serv.org/ExchangeVideoserverOffencesPortType/addVSoffenceRequest"/></con:call></con:operation></con:interface><con:interface xsi:type="con:WsdlInterface" id="3bdf3019-363a-44dc-aef6-9a9ce865112f" wsaVersion="NONE" name="ExchangeVideoserverOffencesSoapBinding" type="wsdl" bindingName="{http://www.1c.exchange-videoserver-offences.serv.org}ExchangeVideoserverOffencesSoapBinding" soapVersion="1_1" anonymous="optional" definition="https://db.1c-ksu.ru/VA_Prombez2/ws/ExchangeVideoserverOffences/ExchangeVideoserverOffences.1cws?wsdl" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><con:settings/><con:definitionCache type="TEXT" rootPart="https://db.1c-ksu.ru/VA_Prombez2/ws/ExchangeVideoserverOffences/ExchangeVideoserverOffences.1cws?wsdl"><con:part><con:url>https://db.1c-ksu.ru/VA_Prombez2/ws/ExchangeVideoserverOffences/ExchangeVideoserverOffences.1cws?wsdl</con:url><con:content><![CDATA[<definitions name="ExchangeVideoserverOffences" targetNamespace="http://www.1c.exchange-videoserver-offences.serv.org" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:soap12bind="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:soapbind="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tns="http://www.1c.exchange-videoserver-offences.serv.org" xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsd1="http://www.1c.exchange-videoserver-offences.org" xmlns:xsd2="http://www.1c.exchange-videoserver-offences.serv.org">
+  <types>
+    <xs:schema targetNamespace="http://www.1c.exchange-videoserver-offences.org" attributeFormDefault="unqualified" elementFormDefault="qualified" xmlns:tns="http://www.1c.exchange-videoserver-offences.org" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:complexType name="addVSoffenceRequest">
+        <xs:sequence>
+          <xs:element name="idAccess" type="xs:string" nillable="true" minOccurs="0"/>
+          <xs:element name="idVideostream" type="xs:string"/>
+          <xs:element name="idObjective" type="xs:string"/>
+          <xs:element name="idRegulation" type="xs:string"/>
+          <xs:element name="idOrganization" type="xs:string" nillable="true" minOccurs="0"/>
+          <xs:element name="idDepartment" type="xs:string" nillable="true" minOccurs="0"/>
+          <xs:element name="dateOffense" type="xs:dateTime"/>
+          <xs:element name="image" type="xs:string"/>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="addVSoffenceResult">
+        <xs:sequence>
+          <xs:element name="strResult" type="xs:string"/>
+          <xs:element name="idResult" type="xs:string" nillable="true" minOccurs="0"/>
+        </xs:sequence>
+      </xs:complexType>
+      <xs:complexType name="metadataType">
+        <xs:sequence>
+          <xs:element name="idRequest" type="xs:string" nillable="true" minOccurs="0"/>
+        </xs:sequence>
+      </xs:complexType>
+    </xs:schema>
+    <xs:schema targetNamespace="http://www.1c.exchange-videoserver-offences.serv.org" elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xs1="http://www.1c.exchange-videoserver-offences.org" xmlns:xs2="http://www.1c.exchange-videoserver-offences.serv.org">
+      <xs:import namespace="http://www.1c.exchange-videoserver-offences.org"/>
+      <xs:element name="addVSoffence">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="metadata" type="xs1:metadataType"/>
+            <xs:element name="data" type="xs1:addVSoffenceRequest"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="addVSoffenceResponse">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="return" type="xs1:addVSoffenceResult"/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:schema>
+  </types>
+  <message name="addVSoffenceRequestMessage">
+    <part name="parameters" element="tns:addVSoffence"/>
+  </message>
+  <message name="addVSoffenceResponseMessage">
+    <part name="parameters" element="tns:addVSoffenceResponse"/>
+  </message>
+  <portType name="ExchangeVideoserverOffencesPortType">
+    <operation name="addVSoffence">
+      <input message="tns:addVSoffenceRequestMessage"/>
+      <output message="tns:addVSoffenceResponseMessage"/>
+    </operation>
+  </portType>
+  <binding name="ExchangeVideoserverOffencesSoapBinding" type="tns:ExchangeVideoserverOffencesPortType">
+    <soapbind:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="addVSoffence">
+      <soapbind:operation style="document" soapAction="http://www.1c.exchange-videoserver-offences.serv.org#ExchangeVideoserverOffences:addVSoffence"/>
+      <input>
+        <soapbind:body use="literal"/>
+      </input>
+      <output>
+        <soapbind:body use="literal"/>
+      </output>
+    </operation>
+  </binding>
+  <binding name="ExchangeVideoserverOffencesSoap12Binding" type="tns:ExchangeVideoserverOffencesPortType">
+    <soap12bind:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="addVSoffence">
+      <soap12bind:operation style="document" soapAction="http://www.1c.exchange-videoserver-offences.serv.org#ExchangeVideoserverOffences:addVSoffence"/>
+      <input>
+        <soap12bind:body use="literal"/>
+      </input>
+      <output>
+        <soap12bind:body use="literal"/>
+      </output>
+    </operation>
+  </binding>
+  <service name="ExchangeVideoserverOffences">
+    <port name="ExchangeVideoserverOffencesSoap" binding="tns:ExchangeVideoserverOffencesSoapBinding">
+      <documentation>
+        <wsi:Claim conformsTo="http://ws-i.org/profiles/basic/1.1" xmlns:wsi="http://ws-i.org/schemas/conformanceClaim/"/>
+      </documentation>
+      <soapbind:address location="https://db.1c-ksu.ru/VA_Prombez2/ws/ExchangeVideoserverOffences/ExchangeVideoserverOffences.1cws"/>
+    </port>
+    <port name="ExchangeVideoserverOffencesSoap12" binding="tns:ExchangeVideoserverOffencesSoap12Binding">
+      <soap12bind:address location="https://db.1c-ksu.ru/VA_Prombez2/ws/ExchangeVideoserverOffences/ExchangeVideoserverOffences.1cws"/>
+    </port>
+  </service>
+</definitions>]]></con:content><con:type>http://schemas.xmlsoap.org/wsdl/</con:type></con:part></con:definitionCache><con:endpoints><con:endpoint>https://db.1c-ksu.ru/VA_Prombez2/ws/ExchangeVideoserverOffences/ExchangeVideoserverOffences.1cws</con:endpoint></con:endpoints><con:operation id="0a4fd7fe-5e1c-4de2-b77f-52de6d3217fc" isOneWay="false" action="http://www.1c.exchange-videoserver-offences.serv.org#ExchangeVideoserverOffences:addVSoffence" name="addVSoffence" bindingOperationName="addVSoffence" type="Request-Response" inputName="" receivesAttachments="false" sendsAttachments="false" anonymous="optional"><con:settings/><con:call id="96ca906b-165a-4b5c-baad-57ecd55a4979" name="Request 1"><con:settings><con:setting id="com.eviware.soapui.impl.wsdl.WsdlRequest@request-headers">&lt;xml-fragment/></con:setting></con:settings><con:encoding>UTF-8</con:encoding><con:endpoint>https://db.1c-ksu.ru/VA_Prombez2/ws/ExchangeVideoserverOffences/ExchangeVideoserverOffences.1cws</con:endpoint><con:request><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:c="http://www.1c.exchange-videoserver-offences.serv.org" xmlns:c1="http://www.1c.exchange-videoserver-offences.org">\r
+   <soapenv:Header/>\r
+   <soapenv:Body>\r
+      <c:addVSoffence>\r
+         <c:metadata>\r
+            <!--Optional:-->\r
+            <c1:idRequest>test</c1:idRequest>\r
+         </c:metadata>\r
+         <c:data>\r
+            <!--Optional:-->\r
+            <c1:idAccess></c1:idAccess>\r
+            <c1:idVideostream>fad1d66d-0c81-11eb-8133-00155d3c2b05</c1:idVideostream>\r
+            <c1:idObjective>cae64053-0c86-11eb-8133-00155d3c2b05</c1:idObjective>\r
+            <c1:idRegulation>1</c1:idRegulation>\r
+            <!--Optional:-->\r
+            <c1:idOrganization></c1:idOrganization>\r
+            <!--Optional:-->\r
+            <c1:idDepartment></c1:idDepartment>\r
+            <c1:dateOffense>2020-10-14T21:00:00.000Z</c1:dateOffense>\r
+            <c1:image>8</c1:image>\r
+         </c:data>\r
+      </c:addVSoffence>\r
+   </soapenv:Body>\r
+</soapenv:Envelope>]]></con:request><con:credentials><con:username>WebServerVideo</con:username><con:password>Videoanalitika2020</con:password><con:selectedAuthProfile>Basic</con:selectedAuthProfile><con:addedBasicAuthenticationTypes>Basic</con:addedBasicAuthenticationTypes><con:authType>Global HTTP Settings</con:authType></con:credentials><con:jmsConfig JMSDeliveryMode="PERSISTENT"/><con:jmsPropertyConfig/><con:wsaConfig mustUnderstand="NONE" version="200508" action="http://www.1c.exchange-videoserver-offences.serv.org#ExchangeVideoserverOffences:addVSoffence"/><con:wsrmConfig version="1.2"/></con:call></con:operation></con:interface><con:properties/><con:wssContainer/><con:oAuth2ProfileContainer/><con:oAuth1ProfileContainer/></con:soapui-project>
