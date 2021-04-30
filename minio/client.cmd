@@ -1,8 +1,9 @@
-chcp 1251
+﻿chcp 1251
 rem Настройка сервера
 	rem Настроим псевдоним доступа admincred
 mc config host add admincred http://localhost:5000 minioadmin minioadmin
 	rem Создадм бакеты(корневые каталоги)
+mc mb admincred/adminbucket
 mc mb admincred/user1bucket
 mc mb admincred/user2bucket
 	rem создадим пользователей
