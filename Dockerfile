@@ -2,7 +2,7 @@ FROM python:alpine
 RUN mkdir /app
 WORKDIR /app
 COPY . .
-RUN pip install -r /app/entrypoint.sh
+RUN pip install -r /app/requirements.txt
 RUN apk add redis
 EXPOSE 5000
 RUN chmod +x /app/entrypoint.sh
