@@ -1,10 +1,10 @@
 FROM python:alpine
 RUN mkdir /app
 WORKDIR /app
-RUN pip install -r requirements.txt
+COPY . .
+RUN pip install -r /app/entrypoint.sh
 RUN apk add redis
 EXPOSE 5000
-COPY . .
 RUN chmod +x /app/entrypoint.sh
 
 ENV REDIS_SERVER=localhost
