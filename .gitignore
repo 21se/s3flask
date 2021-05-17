@@ -1,0 +1,4 @@
+dump.rdb
+minio/*/*
+venv
+.idea
