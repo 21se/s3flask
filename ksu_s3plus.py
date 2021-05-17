@@ -120,11 +120,12 @@ def proxy():
                 redis.delete(key)
 
             # добавление метаданных
-            for key, value in request.headers.environ.items():
-                if key.startswith('HTTP_X_AMZ_META_') and key != 'HTTP_X_AMZ_META_MC_ATTRS':
+            for key, value in request.headers:
+                key = key.lower()
+                if key.startswith('x-amz-meta-'):
                     key = requests.utils.unquote(key)
                     value = requests.utils.unquote(value)
-                    key = key.replace('HTTP_X_AMZ_META_', '').lower()
+                    key = key.replace('x-amz-meta-', '').lower()
 
                     redis.set(path + ':' + key + ':' + value, '1')
                     if not redis_save:
@@ -132,7 +133,7 @@ def proxy():
 
             # если при добавлении отсутствуют метаданные, то проверяем на копирование файла
             if not redis_save:
-                source_path = request.headers.environ.get('HTTP_X_AMZ_COPY_SOURCE')
+                source_path = request.headers.get('X-Amz-Copy-Source')
                 if source_path:
                     source_path = requests.utils.unquote(source_path)
                     for key in redis.keys(source_path + ':*:*'):
@@ -194,12 +195,13 @@ def init_redis():
                 continue
 
             for key, value in minio.stat_object(bucket.name, obj.object_name).metadata.items():
+                key = key.lower()
                 if 'x-amz-meta-' in key:
-                    if key == 'x-amz-meta-mc-attrs':
-                        continue
                     key = key.replace('x-amz-meta-', '')
+
                     key = requests.utils.unquote(key)
                     value = requests.utils.unquote(value)
+
                     redis.set(bucket.name + '/' + obj.object_name + ':' + key + ':' + value, '1')
                     if not save_redis:
                         save_redis = True
