@@ -27,14 +27,12 @@ minio = Minio(config['minio.server'] + ':' + config['minio.port'],
               secure=False)
 
 
-@app.route('/', methods=['GET'])
-def route_welcome():
-    return render_template('welcome.html'), 200
-
-
-@app.route('/', methods=['POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
+@app.route('/', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
 def route_home():
-    return proxy()
+    if not request.headers.get('authorization'):
+        return render_template('welcome.html'), 200
+    else:
+        return proxy()
 
 
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'HEAD', 'DELETE', 'PATCH', 'OPTIONS'])
@@ -76,7 +74,7 @@ def proxy():
                 continue
 
             # возврат файлов из указанного каталога
-            name = name.replace(bucket_name, '')
+            name = name.replace(bucket_name + '/', '')
             if name not in files:
                 files.append(name)
 
